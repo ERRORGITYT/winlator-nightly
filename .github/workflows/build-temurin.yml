@@ -31,4 +31,5 @@ jobs:
       - name: Build Debug APK with SDK Path
         run: ./gradlew assembleDebug -Pandroid.builder.sdkDownload=false
         env:
-          ANDROID_HOME: ${{步骤环境内置默认路径，无需手动改写}}
+          ANDROID_HOME: /usr/local/lib/android/sdk
+          ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
