@@ -1,136 +1,109 @@
-name: Build Android APK
+name: Production Android Build Pipeline
 
 on:
   workflow_dispatch:
+    inputs:
+      build_type:
+        description: 'Select Build Type'
+        required: true
+        default: 'debug'
+        type: choice
+        options:
+          - debug
+          - release
 
 jobs:
-  build:
+  configure-and-compile:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    env:
+      ANDROID_ARCHS: 'armeabi-v7a, arm64-v8a, x86, x86_64'
+      CMAKE_VERSION: '3.22.1'
+      NDK_VERSION: '25.2.9519653'
 
     steps:
-      - name: Checkout Code
+      - name: 1. Initialization - Checkout Source Repository
         uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+          fetch-depth: 0
 
-      - name: Display disk space before build
-        run: df -h
-
-      - name: Show current working directory and list root
-        run: |
-          pwd
-          ls -lh /
-
-      - name: Show OS version and environment summary # new
-        run: |
-          cat /etc/os-release
-          env | sort
-
-      - name: Show free memory # new
-        run: free -h
-
-      - name: Set up JDK 17
+      - name: 2. Runtime Environment - Configure OpenJDK 17
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
           java-version: '17'
           cache: 'gradle'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Accept Licenses
-        run: yes | sdkmanager --licenses
-
-      - name: Install Specific CMake Version
-        run: sdkmanager --install "cmake;3.22.1"
-
-      - name: Restore Gradle cache
+      - name: 3. Optimization - Initialize Global Gradle Cache
         uses: actions/cache@v4
         with:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
-          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-          restore-keys: gradle-${{ runner.os }}-
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/*.gradle.kts') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
 
-      - name: Show Gradle version # new
-        run: ./gradlew --version
-
-      - name: Make Gradle Executable
-        run: chmod +x ./gradlew
-
-      - name: Export JAVA_HOME
-        run: echo "JAVA_HOME=${JAVA_HOME}" >> $GITHUB_ENV
-
-      - name: Show Java version # new
-        run: java -version
-
-      - name: Export Build Time Information # new
-        run: echo "BUILD_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> $GITHUB_ENV
-
-      - name: Stamping version into APK assets (if applicable) # new
+      - name: 4. Toolchain Setup - Validate System Android Paths
         run: |
-          mkdir -p app/src/main/assets
-          echo "Build Time: $BUILD_TIME" > app/src/main/assets/build-info.txt
+          echo "Checking system Android SDK installation path..."
+          if [ -z "$ANDROID_HOME" ]; then
+            echo "ANDROID_HOME is not set globally. Exporting manually..."
+            echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> $GITHUB_ENV
+          else
+            echo "Android SDK found at: $ANDROID_HOME"
+          fi
 
-      - name: Build Debug APK
-        run: ./gradlew assembleDebug
-
-      - name: Build Release APK
-        run: ./gradlew assembleRelease
-
-      - name: List APK outputs
-        run: ls -lh app/build/outputs/apk/debug/ || true
-
-      - name: List APK outputs (release) # new
-        run: ls -lh app/build/outputs/apk/release/ || true
-
-      - name: Show disk space after build # new
-        run: df -h
-
-      - name: Show contents of build-info.txt # new
-        run: cat app/src/main/assets/build-info.txt || echo "No build-info.txt"
-
-      - name: Upload Finished Debug APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: winlator-debug-apk
-          path: app/build/outputs/apk/debug/*.apk
-          retention-days: 7
-
-      - name: Upload Finished Release APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: winlator-release-apk
-          path: app/build/outputs/apk/release/*.apk
-          retention-days: 7
-
-      - name: Upload ProGuard Mapping File (Release) # new
-        uses: actions/upload-artifact@v4
-        with:
-          name: proguard-mapping-release
-          path: app/build/outputs/mapping/release/mapping.txt
-          retention-days: 7
-
-      - name: Upload Build Info # new
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-information
-          path: app/src/main/assets/build-info.txt
-          retention-days: 7
-
-      - name: Display workflow run number
-        run: echo "This build was run as GitHub Actions workflow ID: ${{ github.run_id }}"
-
-      - name: Show recent files and disk usage # new
+      - name: 5. Compliance - Pre-Accept Android SDK Licenses
         run: |
-          find . -type f -printf "%TY-%Tm-%Td %TT %p\n" | sort -r | head -20
-          du -h --max-depth=2 | sort -h | tail -20
+          mkdir -p "$ANDROID_HOME/licenses"
+          echo -e "\n8933bad161ad4178b1185d1a37fdd41ea392d5d5\n40ac565f7577408d513ff54e5cd2eaf5dba15518\xd56f5187479451eabf01fb74a50224d131bc41f2" > "$ANDROID_HOME/licenses/android-sdk-license"
+          echo -e "\n84831b9409646a918e30573bab4c9c91346d8abd" > "$ANDROID_HOME/licenses/android-sdk-preview-license"
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
 
-      - name: Clean up build outputs (optional) # new
+      - name: 6. Infrastructure - Install Android NDK and CMake Components
         run: |
-          rm -rf app/build/outputs/apk/debug/
-          rm -rf app/build/outputs/apk/release/
-        continue-on-error: true
+          echo "Upgrading toolchain components: CMake ${{ env.CMAKE_VERSION }} & NDK ${{ env.NDK_VERSION }}"
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "cmake;${{ env.CMAKE_VERSION }}" "ndk;${{ env.NDK_VERSION }}"
+          echo "Updating global path mappings..."
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/${{ env.NDK_VERSION }}" >> $GITHUB_ENV
 
-      - name: Show workflow complete time # new
-        run: echo "Workflow completed at $(date -u +"%Y-%m-%dT%H:%M:%SZ")" 
+      - name: 7. Permissions - Apply Executable Flags to Build Wrappers
+        run: |
+          if [ -f "./gradlew" ]; then
+            chmod +x ./gradlew
+            echo "Execution permissions successfully bound to gradlew."
+          else
+            echo "ERROR: Gradle wrapper target not found in root directory!"
+            exit 1
+          fi
+
+      - name: 8. Sanitization - Execute Gradle Environment Clean Task
+        run: ./gradlew clean
+
+      - name: 9. Compilation Phase A - Build Target Debug Distribution
+        if: ${{ github.event.inputs.build_type == 'debug' }}
+        run: ./gradlew assembleDebug --stacktrace --parallel --max-workers=4
+
+      - name: 10. Compilation Phase B - Build Target Release Distribution
+        if: ${{ github.event.inputs.build_type == 'release' }}
+        run: ./gradlew assembleRelease --stacktrace --parallel --max-workers=4
+
+      - name: 11. Artifact Processing - Locate and Aggregate Packages
+        id: locate_artifacts
+        run: |
+          echo "Scanning output directory tree for compiled binary packages..."
+          mkdir -p output_artifacts
+          find . -regex '.*\(debug\|release\).*\.apk' -exec cp {} ./output_artifacts/ \;
+          echo "Total packages prepared for export:"
+          ls -la ./output_artifacts/
+
+      - name: 12. Deployment - Upload Generated Binaries to Workspace
+        uses: actions/upload-artifact@v4
+        with:
+          name: winlator-production-${{ github.event.inputs.build_type }}-apk
+          path: ./output_artifacts/*.apk
+          if-no-files-found: error
+          retention-days: 7
