@@ -1,7 +1,7 @@
 name: Build Android APK
 
 on:
-  workflow_dispatch: # This adds a manual "Run" button in your browser
+  workflow_dispatch:
 
 jobs:
   build:
@@ -18,9 +18,9 @@ jobs:
           java-version: '17'
           cache: 'gradle'
 
-      - name: Install Specific CMake via Absolute Path
+      - name: Install Specific CMake Version
         run: |
-          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "cmake;3.22.1"
+          yes | /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager --install "cmake;3.22.1"
 
       - name: Make Gradle Executable
         run: chmod +x ./gradlew
