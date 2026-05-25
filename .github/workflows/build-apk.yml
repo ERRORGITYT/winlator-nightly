@@ -6,7 +6,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
+    
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -17,6 +17,10 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
           cache: 'gradle'
+
+      - name: Install Specific CMake Version
+        run: |
+          sdkmanager --install "cmake;3.22.1"
 
       - name: Make Gradle Executable
         run: chmod +x ./gradlew
