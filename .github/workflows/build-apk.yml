@@ -18,7 +18,10 @@ jobs:
           java-version: '17'
           cache: 'gradle'
 
-      - name: Install Specific CMake Version
+      - name: Setup Android SDK & Tools
+        uses: android-actions/setup-android@v3
+
+      - name: Install Specific CMake & NDK via SDK Manager
         run: |
           sdkmanager --install "cmake;3.22.1"
 
