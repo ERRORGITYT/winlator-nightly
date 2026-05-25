@@ -25,8 +25,12 @@ jobs:
         with:
           packages: 'cmake;3.22.1'
 
+      - name: Hard-patch Packaging Options into build.gradle
+        run: |
+          sed -i '/android {/a \    packagingOptions {\n        pickFirst "**/libVulkan.so"\n        pickFirst "**/libFLAC.so"\n        pickFirst "**/*.so"\n    }' app/build.gradle
+
       - name: Make Gradle Executable
         run: chmod +x ./gradlew
 
-      - name: Build Debug APK (Force Pick First)
-        run: ./gradlew assembleDebug -Pandroid.extractNativeLibs=true
+      - name: Build Debug APK
+        run: ./gradlew assembleDebug
