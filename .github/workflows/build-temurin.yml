@@ -25,19 +25,8 @@ jobs:
         with:
           packages: 'cmake;3.22.1'
 
-      - name: Inject Global Duplicate Fix
-        run: |
-          mkdir -p ~/.gradle
-          echo "allprojects {
-              tasks.withType(com.android.build.gradle.internal.tasks.MergeNativeLibsTask) {
-                  it.doFirst {
-                      android.packagingOptions.pickFirst '**/*.so'
-                  }
-              }
-          }" > ~/.gradle/init.gradle
-
       - name: Make Gradle Executable
         run: chmod +x ./gradlew
 
-      - name: Build Debug APK
-        run: ./gradlew assembleDebug
+      - name: Build Debug APK (Force Pick First)
+        run: ./gradlew assembleDebug -Pandroid.extractNativeLibs=true
