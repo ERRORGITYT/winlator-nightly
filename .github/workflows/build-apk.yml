@@ -6,7 +6,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -18,12 +18,9 @@ jobs:
           java-version: '17'
           cache: 'gradle'
 
-      - name: Setup Android SDK & Tools
-        uses: android-actions/setup-android@v3
-
-      - name: Install Specific CMake & NDK via SDK Manager
+      - name: Install Specific CMake via Absolute Path
         run: |
-          sdkmanager --install "cmake;3.22.1"
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "cmake;3.22.1"
 
       - name: Make Gradle Executable
         run: chmod +x ./gradlew
