@@ -20,10 +20,10 @@ jobs:
           java-version: '17'
           cache: 'gradle'
 
-      - name: Accept Licenses and Install CMake
-        run: |
-          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
-          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "cmake;3.22.1"
+      - name: Setup Android SDK and Install CMake
+        uses: android-actions/setup-android@v3
+        with:
+          packages: 'cmake;3.22.1'
 
       - name: Make Gradle Executable
         run: chmod +x ./gradlew
