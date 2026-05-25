@@ -20,11 +20,8 @@ jobs:
           java-version: '17'
           cache: 'gradle'
 
-      - name: Setup Android SDK Path
-        run: echo "${ANDROID_HOME}/cmdline-tools/latest/bin" >> $GITHUB_PATH
-
-      - name: Install CMake
-        run: yes | sdkmanager --install "cmake;3.22.1"
+      - name: Install Specific CMake Version
+        run: yes | /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager --install "cmake;3.22.1"
 
       - name: Make Gradle Executable
         run: chmod +x ./gradlew
