@@ -13,11 +13,11 @@ jobs:
           submodules: 'recursive'
           fetch-depth: 0
 
-      - name: Set up JDK 17 (Temurin)
+      - name: Set up JDK 11 (Temurin)
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '17'
+          java-version: '11'
           cache: 'gradle'
 
       - name: Setup Android SDK & Install CMake
@@ -28,11 +28,7 @@ jobs:
       - name: Make Gradle Executable
         run: chmod +x ./gradlew
 
-      - name: Build Debug APK
-        run: ./gradlew assembleDebug
-
-      - name: Upload Finished APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: Winlator-Temurin-Build
-          path: app/build/outputs/apk/**/*.apk
+      - name: Build Debug APK with SDK Path
+        run: ./gradlew assembleDebug -Pandroid.builder.sdkDownload=false
+        env:
+          ANDROID_HOME: ${{步骤环境内置默认路径，无需手动改写}}
