@@ -1,4 +1,4 @@
-name: Build Android APK
+name: Build Winlator APK
 
 on:
   workflow_dispatch:
@@ -18,9 +18,10 @@ jobs:
           java-version: '17'
           cache: 'gradle'
 
-      - name: Install Specific CMake Version
+      - name: Install CMake and Accept Licenses
         run: |
-          yes | /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager --install "cmake;3.22.1"
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "cmake;3.22.1"
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
 
       - name: Make Gradle Executable
         run: chmod +x ./gradlew
@@ -31,5 +32,5 @@ jobs:
       - name: Upload Finished APK
         uses: actions/upload-artifact@v4
         with:
-          name: winlator-debug-apk
-          path: app/build/outputs/apk/debug/*.apk
+          name: winlator-compiled-apk
+          path: app/build/outputs/apk/**/*.apk
