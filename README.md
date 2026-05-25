@@ -8,6 +8,13 @@ Winlator is an Android application that lets you to run Windows (x86_64) applica
 This repository stores the latest updates for the Winlator app source.<br>
 For more information and releases, please visit the main repository: https://github.com/brunodev85/winlator
 
+# Winlator Nightly
+Winlator nightly is an unofficial winlator that detects an detects commit change
+What it does
+Is if detect a new commit change
+For example on winlator-app(https://github.com/brunodev85/winlator-app)
+And the github actions will run the workflow
+And opened it on github action
 # Credits and Third-party apps
 
 - GLIBC Patches by [Termux Pacman](https://github.com/termux-pacman/glibc-packages)
