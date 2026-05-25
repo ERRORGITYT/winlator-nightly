@@ -1,180 +1,36 @@
-name: Production Android Build Pipeline
+name: Build Winlator APK
 
 on:
   workflow_dispatch:
-    inputs:
-      build_profile:
-        description: 'Target Variant'
-        required: true
-        default: 'debug'
-        type: choice
-        options:
-          - debug
-          - release
-      optimize_dex:
-        description: 'Optimize Dalvik Executable Allocation'
-        required: true
-        default: 'true'
-        type: choice
-        options:
-          - 'true'
-          - 'false'
-
-env:
-  JDK_VERSION: '17'
-  NDK_VERSION: '25.2.9519653'
-  CMAKE_VERSION: '3.22.1'
-  ANDROID_SDK_ROOT: '/usr/local/lib/android/sdk'
 
 jobs:
-  compile-native-application:
+  build:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
-
     steps:
-      - name: Checkout Repository Source Code
+      - name: Checkout Code
         uses: actions/checkout@v4
         with:
           submodules: 'recursive'
           fetch-depth: 0
 
-      - name: System Hardware and Storage Diagnostics
-        run: |
-          uname -a
-          lscpu | grep "Model name" || true
-          df -h
-
-      - name: Verify Pre-existing Android Environment Paths
-        run: ls -la ${{ env.ANDROID_SDK_ROOT }} || true
-
-      - name: Provision OpenJDK Environment Engine
+      - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
-          java-version: ${{ env.JDK_VERSION }}
+          java-version: '17'
           cache: 'gradle'
 
-      - name: Dynamically Resolve and Map Hidden SDK Binaries
-        run: |
-          SDK_BINARY_DIR="${{ env.ANDROID_SDK_ROOT }}/cmdline-tools/latest/bin"
-          if [ -d "$SDK_BINARY_DIR" ]; then
-            printf "%s\n" "$SDK_BINARY_DIR" >> $GITHUB_PATH
-          else
-            FOUND_PATH=$(find ${{ env.ANDROID_SDK_ROOT }} -name "sdkmanager" -type f | head -n 1)
-            if [ ! -z "$FOUND_PATH" ]; then
-              printf "%s\n" "$(dirname "$FOUND_PATH")" >> $GITHUB_PATH
-            else
-              exit 1
-            fi
-          fi
+      - name: Install Specific CMake Version
+        run: yes | /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager --install "cmake;3.22.1"
 
-      - name: Purge Conflicting Toolchain Cache Layers
-        run: |
-          rm -rf ${{ env.ANDROID_SDK_ROOT }}/ndk/* || true
-          rm -rf ${{ env.ANDROID_SDK_ROOT }}/cmake/* || true
-          rm -rf ~/.gradle/caches/build-cache-* || true
-
-      - name: Generate Cryptographic SDK Licensing Assertions
-        run: |
-          mkdir -p "${{ env.ANDROID_SDK_ROOT }}/licenses"
-          printf "\n8933bad161ad4178b1185d1a37fdd41ea392d5d5\n" > "${{ env.ANDROID_SDK_ROOT }}/licenses/android-sdk-license"
-          printf "40ac565f7577408d513ff54e5cd2eaf5dba15518\n" >> "${{ env.ANDROID_SDK_ROOT }}/licenses/android-sdk-license"
-          printf "d56f5187479451eabf01fb74a50224d131bc41f2\n" >> "${{ env.ANDROID_SDK_ROOT }}/licenses/android-sdk-license"
-          printf "\n84831b9409646a918e30573bab4c9c91346d8abd\n" > "${{ env.ANDROID_SDK_ROOT }}/licenses/android-sdk-preview-license"
-
-      - name: Execute Strict Global License Acceptance
-        run: yes | ${{ env.ANDROID_SDK_ROOT }}/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null 2>&1
-
-      - name: Deploy Explicit Compiler Architectures (CMake & NDK)
-        run: ${{ env.ANDROID_SDK_ROOT }}/cmdline-tools/latest/bin/sdkmanager --install "cmake;${{ env.CMAKE_VERSION }}" "ndk;${{ env.NDK_VERSION }}"
-
-      - name: Bind Local Environment NDK Compilation Pointers
-        run: |
-          LOCAL_NDK_BOUND_PATH="${{ env.ANDROID_SDK_ROOT }}/ndk/${{ env.NDK_VERSION }}"
-          printf "ANDROID_NDK_HOME=%s\n" "$LOCAL_NDK_BOUND_PATH" >> $GITHUB_ENV
-          printf "NDK_ROOT=%s\n" "$LOCAL_NDK_BOUND_PATH" >> $GITHUB_ENV
-
-      - name: Inspect Toolchain Installation Integrity Status
-        run: |
-          find ${{ env.ANDROID_SDK_ROOT }}/cmake -maxdepth 3 || true
-          find ${{ env.ANDROID_SDK_ROOT }}/ndk -maxdepth 2 || true
-
-      - name: Mount Performance Cache Allocations for Native Code
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-            app/.cxx
-            app/build
-          key: ${{ runner.os }}-native-build-cache-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-native-build-cache-
-
-      - name: Inject Custom JVM Heap Run Properties
-        run: |
-          mkdir -p ~/.gradle
-          printf "org.gradle.jvmargs=-Xmx6144m -XX:MaxMetaspaceSize=2048m -XX:+UseParallelGC -Dfile.encoding=UTF-8\n" > ~/.gradle/gradle.properties
-          printf "org.gradle.parallel=true\n" >> ~/.gradle/gradle.properties
-          printf "org.gradle.configureondemand=true\n" >> ~/.gradle/gradle.properties
-          printf "android.builder.sdkDownload=false\n" >> ~/.gradle/gradle.properties
-          if [ "${{ github.event.inputs.optimize_dex }}" == "true" ]; then
-            printf "android.enableDexingArtifactTransform=true\n" >> ~/.gradle/gradle.properties
-          fi
-
-      - name: Verify Local Project Structure Integrity
-        run: |
-          if [ ! -f "./gradlew" ]; then
-            exit 1
-          fi
-          if [ ! -f "build.gradle" ] && [ ! -f "build.gradle.kts" ]; then
-            exit 1
-          fi
-
-      - name: Enforce Gradlew System Execution Permissions
+      - name: Make Gradle Executable
         run: chmod +x ./gradlew
 
-      - name: Execute Core Workspace Pruning Task
-        run: ./gradlew clean --no-daemon
+      - name: Build Debug APK
+        run: ./gradlew assembleDebug --stacktrace
 
-      - name: Execute Debug Code Compilation Pass
-        if: ${{ github.event.inputs.build_profile == 'debug' }}
-        run: ./gradlew assembleDebug --stacktrace --info --parallel
-
-      - name: Execute Release Code Compilation Pass
-        if: ${{ github.event.inputs.build_profile == 'release' }}
-        run: ./gradlew assembleRelease --stacktrace --info --parallel
-
-      - name: Initialize Artifact Aggregation and Sorting
-        run: |
-          mkdir -p ./compiled_output_binaries
-          find . -type f -name "*.apk" -not -path "*/intermediates/*" -exec cp {} ./compiled_output_binaries/ \;
-
-      - name: Evaluate Output Directory Structural Integrity
-        run: |
-          ls -lah ./compiled_output_binaries/
-          TOTAL_APKS=$(ls ./compiled_output_binaries/ | wc -l)
-          if [ "$TOTAL_APKS" -eq 0 ]; then
-            exit 1
-          fi
-
-      - name: Ship Compiled Debug Binary to Workspace Dashboard
-        if: ${{ github.event.inputs.build_profile == 'debug' }}
+      - name: Upload Finished APK
         uses: actions/upload-artifact@v4
         with:
-          name: Winlator-Debug-Build-${{ github.run_number }}
-          path: ./compiled_output_binaries/*.apk
-          retention-days: 7
-          if-no-files-found: error
-
-      - name: Ship Compiled Release Binary to Workspace Dashboard
-        if: ${{ github.event.inputs.build_profile == 'release' }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: Winlator-Release-Build-${{ github.run_number }}
-          path: ./compiled_output_binaries/*.apk
-          retention-days: 7
-          if-no-files-found: error
-
-      - name: Post-Build Workspace Environment Teardown
-        run: ./gradlew --stop || true
+          name: Winlator-Build
+          path: "**/build/outputs/apk/**/*.apk"
