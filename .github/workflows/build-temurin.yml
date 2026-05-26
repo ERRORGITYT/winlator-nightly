@@ -20,17 +20,16 @@ jobs:
           java-version: '17'
           cache: 'gradle'
 
-      - name: Setup Android SDK, NDK & CMake
-        uses: android-actions/setup-android@v3
-        with:
-          packages: |
-            ndk;26.1.10909125
-            cmake;3.22.1
-          accept-android-sdk-licenses: true
+      - name: Force-Install NDK and Accept Licenses
+        run: |
+          mkdir -p ${ANDROID_HOME}/licenses
+          echo -e "24464187969b92421c9d8e421113cd3ffd90142f\n84831b9409646a918e30573bab4c9c91346d8abd\n504667f4c0de7af1a06de9f4b1727b84351f2910\n893a6a6d39b7754d560c350b1d3d2605a00dd33a\nd56f5187479451eabf01fb74314b9440cd948157\n2f8b0b6b72a28b62b1268a042b6413d04a259ac5\naf4b901318d9efab54e27f2214d5a57cf2846d05" > ${ANDROID_HOME}/licenses/android-sdk-license
+          echo -e "84831b9409646a918e30573bab4c9c91346d8abd" > ${ANDROID_HOME}/licenses/android-sdk-preview-license
+          ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --install "ndk;26.1.10909125" "cmake;3.22.1"
 
       - name: Make Gradle Executable
         run: chmod +x ./gradlew
 
       - name: Build Debug APK
         run: ./gradlew assembleDebug
- 
+
