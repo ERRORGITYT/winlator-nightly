@@ -1,38 +1,75 @@
-name: Nightly Build (Temurin Method)
+name: Winlator Nightly Builder
 
 on:
-  workflow_dispatch:
+  schedule:
+    - cron: "0 0 * * *"   # every day at 00:00 UTC
+  workflow_dispatch:       # manual run button
+
+permissions:
+  contents: write
+
+env:
+  JAVA_VERSION: "17"
+  APK_NAME: "winlator-nightly"
 
 jobs:
-  build-apk:
+  build-nightly:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
+
     steps:
-      - name: Checkout Code
+      - name: Checkout source
         uses: actions/checkout@v4
         with:
-          submodules: 'recursive'
           fetch-depth: 0
+          submodules: recursive
 
-      - name: Set up JDK 17 (Temurin)
+      - name: Setup Temurin JDK
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
-          java-version: '17'
-          cache: 'gradle'
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: gradle
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Force Install Components & Accept Licenses
-        run: |
-          mkdir -p ${ANDROID_HOME}/licenses
-          echo -e "24464187969b92421c9d8e421113cd3ffd90142f\n84831b9409646a918e30573bab4c9c91346d8abd\n504667f4c0de7af1a06de9f4b1727b84351f2910\n893a6a6d39b7754d560c350b1d3d2605a00dd33a\nd56f5187479451eabf01fb74314b9440cd948157\n2f8b0b6b72a28b62b1268a042b6413d04a259ac5\naf4b901318d9efab54e27f2214d5a57cf2846d05" > ${ANDROID_HOME}/licenses/android-sdk-license
-          yes | ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --licenses || true
-          ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager "ndk;26.1.10909125" "cmake;3.22.1" "ndk;24.0.8215888"
-
-      - name: Make Gradle Executable
+      - name: Grant gradlew permission
         run: chmod +x ./gradlew
 
-      - name: Build Debug APK
-        run: ./gradlew assembleDebug
- 
+      - name: Show Gradle version
+        run: ./gradlew --version
+
+      - name: Build release APK
+        run: ./gradlew assembleRelease --stacktrace
+
+      - name: Rename APK
+        run: |
+          APK=$(find . -name "*.apk" | head -n 1)
+          cp "$APK" "${{ env.APK_NAME }}-$(date +%Y%m%d).apk"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-apk
+          path: "*.apk"
+          retention-days: 30
+
+      - name: Delete old nightly release
+        continue-on-error: true
+        uses: dev-drprasad/delete-tag-and-release@v1.1
+        with:
+          tag_name: nightly
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create nightly release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: nightly
+          name: Nightly Build
+          body: |
+            Automated nightly Winlator build.
+            Built on: ${{ github.run_number }}
+          files: "*.apk"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
