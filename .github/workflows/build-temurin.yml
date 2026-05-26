@@ -20,15 +20,20 @@ jobs:
 
       - uses: android-actions/setup-android@v3
 
+      - name: Install exact CMake + NDK
+        run: |
+          sdkmanager "cmake;3.22.1"
+          sdkmanager "ndk;24.0.8215888"
+
+      - name: Accept licenses
+        run: yes | sdkmanager --licenses
+
       - run: chmod +x gradlew
 
-      - name: List Gradle tasks
-        run: ./gradlew tasks
-
-      - name: Build Debug APK
+      - name: Build APK
         run: ./gradlew assembleDebug --stacktrace
 
       - uses: actions/upload-artifact@v4
         with:
           name: winlator-nightly
-          path: "**/*.apk" 
+          path: "**/*.apk"
