@@ -13,11 +13,11 @@ jobs:
           submodules: 'recursive'
           fetch-depth: 0
 
-      - name: Set up JDK 11 (Temurin)
+      - name: Set up JDK 17 (Temurin)
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '11'
+          java-version: '17'
           cache: 'gradle'
 
       - name: Setup Android SDK & Install CMake
@@ -25,12 +25,13 @@ jobs:
         with:
           packages: 'cmake;3.22.1'
 
-      - name: Hard-patch Packaging Options into build.gradle
-        run: |
-          sed -i '/android {/a \    packagingOptions {\n        pickFirst "**/libVulkan.so"\n        pickFirst "**/libFLAC.so"\n        pickFirst "**/*.so"\n    }' app/build.gradle
-
       - name: Make Gradle Executable
         run: chmod +x ./gradlew
 
-      - name: Build Debug APK
-        run: ./gradlew assembleDebug
+      - name: Compile and Purge Duplicates
+        run: |
+          ./gradlew compileDebugSources || true
+          find app/build/intermediates/ -name "libFLAC.so" -exec rm -f {} \;
+          find app/build/intermediates/ -name "libVulkan.so" -exec rm -f {} \;
+          ./gradlew assembleDebug
+ 
