@@ -25,9 +25,13 @@ jobs:
         with:
           packages: 'ndk;26.1.10909125;cmake;3.22.1'
 
+      - name: Auto-Accept Android Licenses
+        run: |
+          yes | ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --licenses || true
+
       - name: Make Gradle Executable
         run: chmod +x ./gradlew
 
       - name: Build Debug APK
         run: ./gradlew assembleDebug
-
+ 
