@@ -1,63 +1,38 @@
 name: Winlator Nightly
 
 on:
-  schedule:
-    - cron: "0 0 * * *"   # nightly
   workflow_dispatch:
-
-permissions:
-  contents: write
+  schedule:
+    - cron: "0 0 * * *"
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           submodules: recursive
-          fetch-depth: 0
 
-      - name: Setup Java 17 (Temurin)
-        uses: actions/setup-java@v4
+      - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "17"
+          java-version: 17
           cache: gradle
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+      - uses: android-actions/setup-android@v3
 
-      - name: Install required Android packages
-        run: |
+      - run: |
           yes | sdkmanager --licenses
           sdkmanager \
-            "platform-tools" \
             "platforms;android-34" \
             "build-tools;34.0.0" \
             "cmake;3.22.1" \
             "ndk;24.0.8215888"
 
-      - name: Verify installs
-        run: |
-          sdkmanager --list | grep cmake
-          sdkmanager --list | grep ndk
+      - run: chmod +x gradlew
 
-      - name: Make gradlew executable
-        run: chmod +x ./gradlew
+      - run: ./gradlew clean
 
-      - name: Clean project
-        run: ./gradlew clean
-
-      - name: Build Debug APK
-        run: ./gradlew assembleDebug --stacktrace --info
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: winlator-nightly
-          path: |
-            **/build/outputs/apk/**/*.apk
-          retention-days: 30
+      - name: Build (full logs)
+        run: ./gradlew assembleDebug --stacktrace --debug 
