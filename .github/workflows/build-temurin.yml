@@ -7,7 +7,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04   # more stable than latest
 
     steps:
       - uses: actions/checkout@v4
@@ -17,22 +17,28 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 17
+          java-version: "17"
           cache: gradle
 
       - uses: android-actions/setup-android@v3
 
-      - run: |
+      - name: Install exact SDK deps
+        run: |
           yes | sdkmanager --licenses
           sdkmanager \
-            "platforms;android-34" \
-            "build-tools;34.0.0" \
+            "platform-tools" \
+            "platforms;android-33" \
+            "build-tools;33.0.2" \
             "cmake;3.22.1" \
             "ndk;24.0.8215888"
 
-      - run: chmod +x gradlew
-
+      - run: chmod +x ./gradlew
       - run: ./gradlew clean
 
-      - name: Build (full logs)
-        run: ./gradlew assembleDebug --stacktrace --debug 
+      - name: Build
+        run: ./gradlew assembleDebug --stacktrace
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: winlator-nightly
+          path: "**/*.apk"
